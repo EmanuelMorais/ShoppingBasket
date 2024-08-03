@@ -16,7 +16,7 @@ namespace ShoppingBasketApi.Application
             _receiptService = receiptService;
         }
 
-        public async Task<Result<ReceiptDto>> CalculateBasketTotalAsync(List<BasketItemDto> basketItems)
+        public async Task<Result<ReceiptDto>> CalculateBasketTotalAsync(IEnumerable<BasketItemDto> basketItems)
         {
             var basket = new Basket { Items = basketItems.Select(item => item.ToDomain()).ToList() };
 
@@ -35,7 +35,7 @@ namespace ShoppingBasketApi.Application
             return Result<ReceiptDto>.Success(receiptResult.Value.ToDto());
         }
 
-        public async Task<Result<List<BasketItemDto>>> UpdateBasketWithDiscountsAsync(List<BasketItemDto> basketItems)
+        public async Task<Result<IEnumerable<BasketItemDto>>> UpdateBasketWithDiscountsAsync(IEnumerable<BasketItemDto> basketItems)
         {
             var basket = new Basket { Items = basketItems.Select(item => item.ToDomain()).ToList() };
 
@@ -43,12 +43,12 @@ namespace ShoppingBasketApi.Application
 
             if (!discountResult.IsSuccess)
             {
-                return Result<List<BasketItemDto>>.Failure(discountResult.Error.Code, discountResult.Error.Message);
+                return Result<IEnumerable<BasketItemDto>>.Failure(discountResult.Error.Code, discountResult.Error.Message);
             }
 
             var updatedItems = discountResult.Value.Items.Select(item => item.ToDto()).ToList();
 
-            return Result<List<BasketItemDto>>.Success(updatedItems);
+            return Result<IEnumerable<BasketItemDto>>.Success(updatedItems);
         }
     }
 

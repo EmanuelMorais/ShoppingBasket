@@ -8,7 +8,7 @@ public class Basket
 
     public string UserId { get; set; }
 
-    public IEnumerable<BasketItem> Items { get; set; } = new List<BasketItem>();
+    public ICollection<BasketItem> Items { get; set; } = new List<BasketItem>();
 
     public decimal Discounts => Items.Sum(item => item.DiscountApplied);
 
