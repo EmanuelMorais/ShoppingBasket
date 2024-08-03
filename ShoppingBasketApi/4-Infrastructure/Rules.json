@@ -1,0 +1,21 @@
+﻿[
+  {
+    "Name": "Discounts",
+    "Rules": [
+      {
+        "RuleName": "Apples10PercentDiscount",
+        "SuccessEvent": "0.10",
+        "ErrorMessage": "Error applying discount to apples",
+        "Expression": "ItemName == \"Apples\"",
+        "RuleExpressionType": "LambdaExpression"
+      },
+      {
+        "RuleName": "MultiBuySoupBread",
+        "SuccessEvent": "0.50",
+        "ErrorMessage": "Error applying multi-buy discount",
+        "Expression": "ItemName == \"Soup\" && Quantity >= 2",
+        "RuleExpressionType": "LambdaExpression"
+      }
+    ]
+  }
+]
