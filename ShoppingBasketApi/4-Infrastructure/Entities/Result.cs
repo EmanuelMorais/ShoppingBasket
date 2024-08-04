@@ -1,5 +1,4 @@
-﻿using System;
-using Newtonsoft.Json.Linq;
+﻿
 using ShoppingBasketApi.Infrastructure.Entities;
 
 namespace ShoppingBasketApi.Infrastructure.Helpers
@@ -37,7 +36,7 @@ namespace ShoppingBasketApi.Infrastructure.Helpers
 
         public T? Value => isSuccess ? value : throw new InvalidOperationException("No value available for failure result");
 
-        public ApplicationError Error => !isSuccess ? applicationError : throw new InvalidOperationException("No error available for success result");
+        public ApplicationError Error => !isSuccess ? applicationError : default;
 
         public TResult Match<TResult>(Func<T, TResult> success, Func<ApplicationError, TResult> failure)
         {

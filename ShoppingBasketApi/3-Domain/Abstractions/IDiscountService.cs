@@ -1,11 +1,10 @@
 ﻿using ShoppingBasketApi.Domain.Entities;
 using ShoppingBasketApi.Infrastructure.Helpers;
 
-namespace ShoppingBasketApi.Domain.Abstractions
+namespace ShoppingBasketApi.Domain.Abstractions;
+
+public interface IDiscountService
 {
-    public interface IDiscountService
-    {
-        Task<Result<Basket>> ApplyBasketDiscountAsync(Basket basket);
-        Task<Result<Receipt>> ApplyDiscountsAsync(Basket basket);
-    }
+    Task<Result<Basket>> ApplyBasketDiscountAsync(Basket basket);
+    Task<Result<Receipt>> ApplyDiscountsAsync(Basket basket);
 }

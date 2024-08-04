@@ -8,9 +8,9 @@ public record BasketDto
 
     public List<BasketItemDto> Items { get; set; } = new List<BasketItemDto>();
 
-    public decimal Discounts => Items.Sum(item => item.DiscountApplied);
+    public decimal Discounts => Items.Sum(item => (item.UnitPrice * item.Quantity) * item.DiscountAppliedValue);
 
-    public decimal Total => Items.Sum(item => item.Price);
+    public decimal Total => Items.Sum(item => (item.UnitPrice * item.Quantity) * (1 - item.DiscountAppliedValue));
 
     public Basket ToDomain()
     {

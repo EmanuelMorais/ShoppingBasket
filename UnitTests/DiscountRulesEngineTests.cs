@@ -1,34 +1,41 @@
-﻿using System;
+﻿namespace UnitTests;
+
+using System.Text.Json;
 using FluentAssertions;
 using Moq;
+using ShoppingBasketApi.Domain.Abstractions;
+using ShoppingBasketApi.Domain.Entities;
 using ShoppingBasketApi.Infrastructure;
-
-namespace UnitTests;
 
 public class DiscountRulesEngineTests
 {
-    private const string TestRulesJson = @"
-        [
-            {
-                ""Name"": ""Discounts"",
-                ""Rules"": [
-                    {
-                        ""RuleName"": ""TestRule"",
-                        ""SuccessEvent"": ""0.1"",
-                        ""ErrorMessage"": """",
-                        ""Expression"": ""true""
-                    }
-                ]
-            }
-        ]";
+    private readonly Mock<IRulesFileProvider> mockRulesFileProvider;
+    private readonly IRulesEngine rulesEngine;
 
-    private DiscountRulesEngine _discountRulesEngine;
+    private const string TestRulesJsons = @"
+    [
+        {
+        ""WorkflowName"": ""Discounts"",
+        ""Rules"": [
+            {
+            ""RuleName"": ""MultiBuySoupBread"",
+            ""SuccessEvent"": ""0.50"",
+            ""ErrorMessage"": ""Error applying multi-buy discount"",
+            ""Expression"": ""input1.ItemName == \""Soup\"" && input1.Quantity >= 2"",
+            ""RuleExpressionType"": 0
+            }
+        ]
+        }
+    ]
+    ";
 
     public DiscountRulesEngineTests()
     {
-        // Set up the test environment to simulate reading rules from a JSON string
-        File.WriteAllText(GetRulesFilePath(), TestRulesJson);
-        _discountRulesEngine = new DiscountRulesEngine();
+        this.mockRulesFileProvider = new Mock<IRulesFileProvider>();
+        this.mockRulesFileProvider.Setup(provider => provider.GetRulesJsonAsync())
+            .ReturnsAsync(TestRulesJsons);
+
+        this.rulesEngine = new DiscountRulesEngine(this.mockRulesFileProvider.Object);
     }
 
     [Fact]
@@ -36,70 +43,49 @@ public class DiscountRulesEngineTests
     {
         // Arrange
         string workflowName = "Discounts";
-        dynamic[] inputs = new[]
+        BasketInput[] inputs = new BasketInput[]
         {
-                new { ProductName = "Item1", Quantity = 2, UnitPrice = 50 },
-                new { ProductName = "Item2", Quantity = 1, UnitPrice = 100 }
-            };
+            new BasketInput{ ItemName = "Soup", Quantity = 2, Price = 50 },
+            new BasketInput{ ItemName = "Soup", Quantity = 1, Price = 50 }
+        };
 
         // Act
-        var result = await _discountRulesEngine.ExecuteAllRulesAsync(workflowName, inputs);
+        var result = await this.rulesEngine.ExecuteAllRulesAsync(workflowName, inputs);
 
         // Assert
         result.Should().NotBeNull();
         result.Should().HaveCount(1);
         result.First().IsSuccess.Should().BeTrue();
-        result.First().Rule.RuleName.Should().Be("TestRule");
-        result.First().Rule.SuccessEvent.Should().Be("0.1");
+        result.First().Rule.RuleName.Should().Be("MultiBuySoupBread");
+        result.First().Rule.SuccessEvent.Should().Be("0.50");
     }
 
     [Fact]
-    public async Task ExecuteAllRulesAsync_WhenNoWorkflowFound_ThrowsArgumentException()
+    public void Constructor_WhenRulesJsonIsInvalid_ThrowsJsonException()
     {
         // Arrange
-        string workflowName = "NonExistentWorkflow";
-        dynamic[] inputs = new[]
-        {
-                new { ProductName = "Item1", Quantity = 2, UnitPrice = 50 },
-                new { ProductName = "Item2", Quantity = 1, UnitPrice = 100 }
-            };
+        this.mockRulesFileProvider.Setup(provider => provider.GetRulesJsonAsync())
+            .ReturnsAsync("Invalid JSON");
 
         // Act
-        Func<Task> act = async () => await _discountRulesEngine.ExecuteAllRulesAsync(workflowName, inputs);
+        Action act = () => new DiscountRulesEngine(this.mockRulesFileProvider.Object);
 
         // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-           .WithMessage($"No configuration found for workflow: {workflowName}");
+        act.Should().Throw<JsonException>();
     }
 
     [Fact]
-    public async Task ExecuteAllRulesAsync_WhenRulesFileNotFound_ThrowsFileNotFoundException()
+    public void Constructor_WhenRulesFileProviderThrowsFileNotFoundException_ThrowsFileNotFoundException()
     {
         // Arrange
-        string workflowName = "Discounts";
-        dynamic[] inputs = new[]
-        {
-                new { ProductName = "Item1", Quantity = 2, UnitPrice = 50 },
-                new { ProductName = "Item2", Quantity = 1, UnitPrice = 100 }
-            };
+        this.mockRulesFileProvider.Setup(provider => provider.GetRulesJsonAsync())
+            .ThrowsAsync(new FileNotFoundException("Rules file not found."));
 
         // Act
-        // Temporarily rename the file to simulate file not found.
-        File.Move(GetRulesFilePath(), GetRulesFilePath() + ".bak");
-
-        Func<Task> act = async () => await _discountRulesEngine.ExecuteAllRulesAsync(workflowName, inputs);
+        Action act = () => new DiscountRulesEngine(this.mockRulesFileProvider.Object);
 
         // Assert
-        await act.Should().ThrowAsync<FileNotFoundException>()
-            .WithMessage("Rules file not found");
-
-        // Clean up by renaming the file back.
-        File.Move(GetRulesFilePath() + ".bak", GetRulesFilePath());
-    }
-
-    private string GetRulesFilePath()
-    {
-        // Adjust this path according to your test setup
-        return Path.Combine(AppContext.BaseDirectory, "rules.json");
+        act.Should().Throw<FileNotFoundException>()
+            .WithMessage("Rules file not found.");
     }
 }

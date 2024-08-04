@@ -1,11 +1,11 @@
-﻿using System;
-using RulesEngine.Models;
+﻿using RulesEngine.Models;
+using ShoppingBasketApi.Domain.Entities;
 
-namespace ShoppingBasketApi.Domain.Abstractions
+namespace ShoppingBasketApi.Domain.Abstractions;
+
+public interface IRulesEngine
 {
-    public interface IRulesEngine
-    {
-        Task<List<RuleResultTree>> ExecuteAllRulesAsync(string workflowName, dynamic[] inputs);
-    }
+    Task<List<RuleResultTree>> ExecuteAllRulesAsync(string workflowName, BasketInput[] inputs);
+    Task<List<RuleResultTree>> ExecuteAllRulesAsync(string workflowName, BasketItemInput[] inputs);
 }
 

@@ -10,17 +10,28 @@ public class Basket
 
     public ICollection<BasketItem> Items { get; set; } = new List<BasketItem>();
 
-    public decimal Discounts => Items.Sum(item => item.DiscountApplied);
+    public decimal Discounts => Items.Sum(item => (item.UnitPrice * item.Quantity) * item.DiscountAppliedValue);
 
-    public decimal Total => Items.Sum(item => item.Price);
+    public decimal Total => Items.Sum(item => (item.UnitPrice * item.Quantity) * (1 - item.DiscountAppliedValue));
 
-    public dynamic[] GetInputs()
+    public BasketInput[] GetInputs()
     {
-        return Items.Select(item => new
+        return this.Items.Select(item => new BasketInput
         {
-            ProductName = item.ItemName,
+            ItemName = item.ItemName,
             Quantity = item.Quantity,
-            Price = item.Price
+            Price = item.UnitPrice
+        }).ToArray();
+    }
+
+    public BasketInput[] GetInputs(DateTime currentDate)
+    {
+        return this.Items.Select(item => new BasketInput
+        {
+            ItemName = item.ItemName,
+            Quantity = item.Quantity,
+            Price = item.UnitPrice,
+            CurrentDate = currentDate
         }).ToArray();
     }
 
@@ -32,4 +43,11 @@ public class Basket
             Items = this.Items.Select(item => item.ToDto()).ToList()
         };
     }
+}
+public class BasketInput
+{
+    public string ItemName { get; set; }
+    public int Quantity { get; set; }
+    public decimal Price { get; set; }
+    public DateTimeOffset CurrentDate { get; set; }
 }

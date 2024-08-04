@@ -1,5 +1,4 @@
-﻿using System;
-using FluentAssertions;
+﻿using FluentAssertions;
 using ShoppingBasketApi.Domain.Entities;
 using ShoppingBasketApi.Domain.Services;
 
@@ -23,8 +22,8 @@ public class ReceiptServiceTests
             Id = Guid.NewGuid(),
             Items = new List<BasketItem>
                 {
-                    new BasketItem { ItemName = "Item1", Quantity = 2, UnitPrice = 50, DiscountApplied = 5 },
-                    new BasketItem { ItemName = "Item2", Quantity = 1, UnitPrice = 100, DiscountApplied = 0 }
+                    new BasketItem { ItemName = "Item1", Quantity = 2, UnitPrice = 50, DiscountAppliedValue = 5 },
+                    new BasketItem { ItemName = "Item2", Quantity = 1, UnitPrice = 100, DiscountAppliedValue = 0 }
                 }
         };
 

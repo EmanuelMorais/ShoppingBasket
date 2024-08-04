@@ -1,20 +1,20 @@
 ﻿[
   {
-    "Name": "Discounts",
+    "WorkflowName": "Discounts",
     "Rules": [
       {
         "RuleName": "Apples10PercentDiscount",
         "SuccessEvent": "0.10",
         "ErrorMessage": "Error applying discount to apples",
-        "Expression": "ItemName == \"Apples\"",
-        "RuleExpressionType": "LambdaExpression"
+        "Expression": "input1.ItemName == \"Apples\" && input1.CurrentDate >= \"08-04-2024\" && input1.CurrentDate <= \"08-20-2024\"",
+        "RuleExpressionType": 0
       },
       {
         "RuleName": "MultiBuySoupBread",
         "SuccessEvent": "0.50",
         "ErrorMessage": "Error applying multi-buy discount",
-        "Expression": "ItemName == \"Soup\" && Quantity >= 2",
-        "RuleExpressionType": "LambdaExpression"
+        "Expression": "input1.ItemName == \"Soup\" && input1.Quantity >= 2",
+        "RuleExpressionType": 0
       }
     ]
   }

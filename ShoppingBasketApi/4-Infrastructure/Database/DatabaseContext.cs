@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ShoppingBasketApi.Domain.Entities;
 
 namespace ShoppingBasketApi.Data.Database
@@ -27,7 +26,7 @@ namespace ShoppingBasketApi.Data.Database
                     Id = 1,
                     RuleName = "Apples10PercentDiscount",
                     SuccessEvent = "Apply 10% discount to apples",
-                    Expression = "ProductName == \"Apples\"",
+                    Expression = "ItemName == \"Apples\"",
                     DiscountAmount = 0.10m,
                     WorkflowId = 1,
                     ErrorMessage = "Error applying discount to apples",
@@ -38,7 +37,7 @@ namespace ShoppingBasketApi.Data.Database
                     Id = 2,
                     RuleName = "MultiBuySoupBread",
                     SuccessEvent = "Apply multi-buy discount",
-                    Expression = "ProductName == \"Soup\" && Quantity >= 2",
+                    Expression = "ItemName == \"Soup\" && Quantity >= 2",
                     DiscountAmount = 0.40m,
                     WorkflowId = 1,
                     ErrorMessage = "Error applying multi-buy discount",

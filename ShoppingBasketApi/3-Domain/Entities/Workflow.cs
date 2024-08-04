@@ -1,12 +1,11 @@
-﻿namespace ShoppingBasketApi.Domain.Entities
+﻿namespace ShoppingBasketApi.Domain.Entities;
+
+public class Workflow
 {
-    public class Workflow
-    {
-        public int Id { get; set; }
+    public int Id { get; set; }
 
-        public string Name { get; set; }
+    public string Name { get; set; }
 
-        public ICollection<Rule> Rules { get; set; }
-    }
+    public ICollection<Rule> Rules { get; set; }
 }
 

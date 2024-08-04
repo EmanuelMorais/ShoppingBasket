@@ -10,9 +10,13 @@ public record BasketItemDto
 
     public decimal UnitPrice { get; set; }
 
-    public decimal Price => UnitPrice * Quantity;
+    public decimal Price => DiscountAppliedValue > 0m ? (this.UnitPrice * this.Quantity) * DiscountAppliedValue : this.UnitPrice * this.Quantity;
 
-    public decimal DiscountApplied { get; set; }
+    public decimal FullPrice => this.UnitPrice * this.Quantity;
+
+    public decimal DiscountAppliedValue { get; set; }
+
+    public string DiscountAppliedName { get; set; }
 
     public BasketItem ToDomain()
     {
@@ -21,7 +25,8 @@ public record BasketItemDto
             ItemName = this.ItemName,
             Quantity = this.Quantity,
             UnitPrice = this.UnitPrice,
-            DiscountApplied = this.DiscountApplied
+            DiscountAppliedValue = this.DiscountAppliedValue,
+            DiscountAppliedName = this.DiscountAppliedName
         };
     }
 }

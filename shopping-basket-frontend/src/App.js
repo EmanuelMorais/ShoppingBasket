@@ -1,14 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import './App.css';
-
-// Debounce function to limit API call frequency
-const debounce = (func, delay) => {
-  let timeoutId;
-  return (...args) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  };
-};
 
 function App() {
   const [basket, setBasket] = useState({});
@@ -16,26 +7,83 @@ function App() {
   const [discounts, setDiscounts] = useState([]);
 
   const items = [
-    { name: 'Soup', price: 1.5 },
-    { name: 'Bread', price: 2.0 },
-    { name: 'Milk', price: 1.2 },
-    { name: 'Apples', price: 0.5 }
+    { name: 'Soup', price: 0.65 },
+    { name: 'Bread', price: 0.80 },
+    { name: 'Milk', price: 1.3 },
+    { name: 'Apples', price: 1.0 }
   ];
+
+  const updateBasket = (updatedBasket, forceRemove = false) => {
+    const basketItems = Object.keys(updatedBasket).map(key => {
+      const item = updatedBasket[key];
+      const itemInfo = items.find(i => i.name === key);
+      const unitPrice = itemInfo ? itemInfo.price : 0;
+
+      return {
+        itemName: key,
+        quantity: item.quantity,
+        unitPrice: unitPrice,
+        discountAppliedValue: item.discountApplied || 0,
+        discountAppliedName: item.discountAppliedName || ""
+      };
+    });
+
+    fetch(`/api/basket/update?forceRemove=${forceRemove}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(basketItems),
+    })
+      .then(response => {
+        if (!response.ok) {
+          return response.text().then(text => {
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${text}`);
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Updated data:', data);
+
+        const basketState = data.reduce((acc, item) => {
+          acc[item.itemName] = {
+            ...item,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            discountApplied: item.discountAppliedValue || 0,
+            discountAppliedName: item.discountAppliedName
+          };
+          return acc;
+        }, {});
+
+        console.log('Basket State:', basketState);
+
+        setBasket(basketState);
+
+        const totalPrice = data.reduce((sum, item) => {
+          const discountedPrice = (item.unitPrice * item.quantity) * (1 - item.discountAppliedValue);
+          return sum + discountedPrice;
+        }, 0);
+
+        console.log('Total Price:', totalPrice);
+
+        setTotal(totalPrice.toFixed(2));
+      })
+      .catch(error => {
+        console.error('Error updating basket:', error);
+      });
+  };
 
   const addToBasket = (item) => {
     setBasket(prevBasket => {
       const updatedBasket = {
         ...prevBasket,
         [item.name]: {
-          ...prevBasket[item.name],
           quantity: (prevBasket[item.name]?.quantity || 0) + 1,
-          price: item.price
+          unitPrice: item.price,
+          discountApplied: prevBasket[item.name]?.discountApplied || 0
         }
       };
-
-      // Call updateBasket with the updated state
       updateBasket(updatedBasket);
-      
       return updatedBasket;
     });
   };
@@ -46,13 +94,10 @@ function App() {
         ...prevBasket,
         [itemName]: {
           ...prevBasket[itemName],
-          quantity: parseInt(quantity) || 0
+          quantity: parseInt(quantity, 10) || 0
         }
       };
-
-      // Call updateBasket with the updated state
       updateBasket(updatedBasket);
-      
       return updatedBasket;
     });
   };
@@ -60,62 +105,24 @@ function App() {
   const removeFromBasket = (itemName) => {
     setBasket(prevBasket => {
       const { [itemName]: removed, ...rest } = prevBasket;
-      const updatedBasket = rest;
-
-      // Call updateBasket with the updated state
-      updateBasket(updatedBasket);
-      
-      return updatedBasket;
+      updateBasket(rest, true);
+      return rest;
     });
   };
 
-  // Debounced updateBasket function
-  const updateBasket = useCallback(debounce(async (updatedBasket) => {
-    console.log('Updating basket with:', updatedBasket);
-
-    try {
-      const response = await fetch('/api/basket/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.keys(updatedBasket).map(key => ({
-          productName: key,
-          quantity: updatedBasket[key].quantity,
-          unitPrice: updatedBasket[key].price,
-          discountApplied: updatedBasket[key].discountApplied || 0
-        }))),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update basket');
-      }
-
-      const data = await response.json();
-      // Ensure the basket state is updated with the latest data
-      setBasket(data.reduce((acc, item) => {
-        acc[item.productName] = {
-          ...item,
-          quantity: item.quantity,
-          price: item.unitPrice,
-          discountApplied: item.discountApplied || 0
-        };
-        return acc;
-      }, {}));
-    } catch (error) {
-      console.error('Error updating basket:', error);
-    }
-  }, 500), []);
-
-  // Effect to call updateBasket whenever the basket changes
-  useEffect(() => {
-    updateBasket(basket);
-  }, [basket, updateBasket]);
-
   const calculateTotal = () => {
-    const basketArray = Object.keys(basket).map(key => ({
-      itemName: key,
-      quantity: basket[key].quantity,
-      unitPrice: basket[key].price 
-    }));
+    const basketArray = Object.keys(basket).map(key => {
+      const item = basket[key];
+      const itemInfo = items.find(i => i.name === key);
+      const unitPrice = itemInfo ? itemInfo.price : 0;
+      return {
+        itemName: key,
+        quantity: item.quantity,
+        unitPrice: unitPrice,
+        discountAppliedValue: item.discountApplied || 0,
+        discountAppliedName: item.discountAppliedName || ""
+      };
+    });
 
     fetch('/api/basket/calculate', {
       method: 'POST',
@@ -124,8 +131,8 @@ function App() {
     })
       .then(response => response.json())
       .then(data => {
-        const receipt = data.receipt;
-        setTotal(receipt.totalPrice);
+        const receipt = data.Receipt;
+        setTotal(receipt.totalPrice.toFixed(2));
         setDiscounts(receipt.discountsApplied || []);
       })
       .catch(error => console.error('Error calculating total:', error));
@@ -153,34 +160,31 @@ function App() {
           <section className="basket">
             <h2>Basket</h2>
             <div className="basket-items">
-              {Object.keys(basket).length === 0 ? (
-                <p>Your basket is empty</p>
-              ) : (
-                Object.keys(basket).map(key => (
-                  <div key={key} className="basket-item">
-                    <span>{key}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={basket[key].quantity}
-                      onChange={(e) => updateQuantity(key, e.target.value)}
-                    />
-                    <button onClick={() => removeFromBasket(key)}>Remove</button>
-                    {basket[key].discountApplied && (
-                      <span className="discount">
-                        {basket[key].discountApplied}% off
-                      </span>
-                    )}
-                  </div>
-                ))
-              )}
+              {Object.keys(basket).map(key => (
+                <div key={key} className="basket-item">
+                  <span>{key}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={basket[key].quantity}
+                    onChange={(e) => updateQuantity(key, e.target.value)}
+                  />
+                  <span>Price: €{(basket[key].unitPrice * (1 - (basket[key].discountApplied || 0))).toFixed(2)}</span>
+                  <button onClick={() => removeFromBasket(key)}>Remove</button>
+                  {basket[key].discountApplied > 0 && (
+                    <span className="discount">
+                      {Math.round(basket[key].discountApplied * 100)}% off
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
             <button className="calculate-button" onClick={calculateTotal}>
               Calculate Total
             </button>
             {total !== null && (
               <>
-                <h3>Total: €{total.toFixed(2)}</h3>
+                <h3>Total: €{total}</h3>
                 {discounts.length > 0 && (
                   <div className="discounts">
                     <h4>Applied Discounts:</h4>

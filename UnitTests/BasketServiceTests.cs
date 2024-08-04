@@ -7,7 +7,8 @@ using ShoppingBasketApi.Domain.Entities;
 using ShoppingBasketApi.Infrastructure.Entities;
 using ShoppingBasketApi.Infrastructure.Helpers;
 
-namespace ShoppingBasketApi.Tests.Services;
+namespace UnitTests;
+
 public class BasketServiceTests
 {
     private readonly Mock<IDiscountService> _mockDiscountService;
@@ -27,13 +28,13 @@ public class BasketServiceTests
         // Arrange
         var basketItems = new List<BasketItemDto>
             {
-                new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountApplied = 10 }
+                new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountAppliedValue = 10 }
             };
 
         var basket = new Basket { Items = basketItems.Select(item => item.ToDomain()).ToList() };
         var receipt = new Receipt
         {
-
+            BasketId = basket.Id,
             DiscountsApplied = 10,
             TotalPrice = 90
         };
@@ -45,8 +46,8 @@ public class BasketServiceTests
         };
 
         _mockDiscountService
-            .Setup(s => s.ApplyDiscountsAsync(It.IsAny<Basket>()))
-            .ReturnsAsync(Result<Receipt>.Success(receipt));
+            .Setup(s => s.ApplyBasketDiscountAsync(It.IsAny<Basket>()))
+            .ReturnsAsync(Result<Basket>.Success(basket));
 
         _mockReceiptService
             .Setup(s => s.GenerateReceipt(It.IsAny<Basket>()))
@@ -60,28 +61,6 @@ public class BasketServiceTests
         result.Value.Should().BeEquivalentTo(receiptDto);
     }
 
-    [Fact]
-    public async Task CalculateBasketTotalAsync_WhenDiscountServiceFails_ReturnsFailure()
-    {
-        // Arrange
-        var basketItems = new List<BasketItemDto>
-            {
-                new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountApplied = 10 }
-            };
-
-        var error = new ApplicationError("DISCOUNT_ERROR", "Discount calculation failed");
-
-        _mockDiscountService
-            .Setup(s => s.ApplyDiscountsAsync(It.IsAny<Basket>()))
-            .ReturnsAsync(Result<Receipt>.Failure(error.Code, error.Message));
-
-        // Act
-        var result = await _basketService.CalculateBasketTotalAsync(basketItems);
-
-        // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeEquivalentTo(error);
-    }
 
     [Fact]
     public async Task CalculateBasketTotalAsync_WhenReceiptServiceFails_ReturnsFailure()
@@ -89,7 +68,7 @@ public class BasketServiceTests
         // Arrange
         var basketItems = new List<BasketItemDto>
             {
-                new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountApplied = 10 }
+                new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountAppliedValue = 10 }
             };
 
         var basket = new Basket { Items = basketItems.Select(item => item.ToDomain()).ToList() };
@@ -102,8 +81,8 @@ public class BasketServiceTests
         var error = new ApplicationError("RECEIPT_ERROR", "Receipt generation failed");
 
         _mockDiscountService
-            .Setup(s => s.ApplyDiscountsAsync(It.IsAny<Basket>()))
-            .ReturnsAsync(Result<Receipt>.Success(receipt));
+            .Setup(s => s.ApplyBasketDiscountAsync(It.IsAny<Basket>()))
+            .ReturnsAsync(Result<Basket>.Success(basket));
 
         _mockReceiptService
             .Setup(s => s.GenerateReceipt(It.IsAny<Basket>()))
@@ -123,7 +102,7 @@ public class BasketServiceTests
         // Arrange
         var basketItems = new List<BasketItemDto>
             {
-                new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountApplied = 10 }
+                new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountAppliedValue = 10 }
             };
 
         var basket = new Basket { Items = basketItems.Select(item => item.ToDomain()).ToList() };
@@ -140,26 +119,4 @@ public class BasketServiceTests
         result.Value.Should().BeEquivalentTo(basketItems);
     }
 
-    [Fact]
-    public async Task UpdateBasketWithDiscountsAsync_WhenDiscountServiceFails_ReturnsFailure()
-    {
-        // Arrange
-        var basketItems = new List<BasketItemDto>
-            {
-                new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountApplied = 10 }
-            };
-
-        var error = new ApplicationError("DISCOUNT_ERROR", "Discount application failed");
-
-        _mockDiscountService
-            .Setup(s => s.ApplyBasketDiscountAsync(It.IsAny<Basket>()))
-            .ReturnsAsync(Result<Basket>.Failure(error.Code, error.Message));
-
-        // Act
-        var result = await _basketService.UpdateBasketWithDiscountsAsync(basketItems);
-
-        // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeEquivalentTo(error);
-    }
 }

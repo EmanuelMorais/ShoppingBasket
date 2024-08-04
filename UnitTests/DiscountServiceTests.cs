@@ -1,101 +1,195 @@
 ﻿using FluentAssertions;
-using ShoppingBasketApi.Infrastructure;
+using Moq;
+using RulesEngine.Models;
+using ShoppingBasketApi.Domain.Abstractions;
+using ShoppingBasketApi.Domain.Entities;
+using ShoppingBasketApi.Domain.Services;
+using ShoppingBasketApi.Infrastructure.Entities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Xunit;
 
-public class DiscountRulesEngineTests
+namespace UnitTests
 {
-    private const string TestRulesJson = @"
-        [
+    public class DiscountServiceTests
+    {
+        private readonly Mock<IRulesEngine> _mockRulesEngine;
+        private readonly DiscountService _discountService;
+
+        public DiscountServiceTests()
+        {
+            _mockRulesEngine = new Mock<IRulesEngine>();
+            _discountService = new DiscountService(_mockRulesEngine.Object);
+        }
+
+        [Fact]
+        public async Task ApplyDiscountsAsync_ValidBasket_ReturnsSuccessWithCorrectReceipt()
+        {
+            // Arrange
+            var basket = new Basket
             {
-                ""Name"": ""Discounts"",
-                ""Rules"": [
+                Items = new List<BasketItem>
+                {
+                    new BasketItem { ItemName = "Item1", Quantity = 1, UnitPrice = 100 }
+                }
+            };
+
+            var ruleResults = new List<RuleResultTree>
+            {
+                new RuleResultTree
+                {
+                    IsSuccess = true,
+                    Rule = new RulesEngine.Models.Rule
                     {
-                        ""RuleName"": ""TestRule"",
-                        ""SuccessEvent"": ""0.1"",
-                        ""ErrorMessage"": """",
-                        ""Expression"": ""true""
+                        RuleName = "DiscountRule1",
+                        SuccessEvent = "0.10" // 10% discount
                     }
-                ]
-            }
-        ]";
-
-    private DiscountRulesEngine _discountRulesEngine;
-
-    public DiscountRulesEngineTests()
-    {
-        // Set up the test environment to simulate reading rules from a JSON string
-        File.WriteAllText(GetRulesFilePath(), TestRulesJson);
-        _discountRulesEngine = new DiscountRulesEngine();
-    }
-
-    [Fact]
-    public async Task ExecuteAllRulesAsync_WhenRulesExist_ReturnsRuleResults()
-    {
-        // Arrange
-        string workflowName = "Discounts";
-        dynamic[] inputs = new[]
-        {
-                new { ProductName = "Item1", Quantity = 2, UnitPrice = 50 },
-                new { ProductName = "Item2", Quantity = 1, UnitPrice = 100 }
+                }
             };
 
-        // Act
-        var result = await _discountRulesEngine.ExecuteAllRulesAsync(workflowName, inputs);
+            _mockRulesEngine
+                .Setup(r => r.ExecuteAllRulesAsync("Discounts", It.IsAny<BasketInput[]>()))
+                .ReturnsAsync(ruleResults);
 
-        // Assert
-        result.Should().NotBeNull();
-        result.Should().HaveCount(1);
-        result.First().IsSuccess.Should().BeTrue();
-        result.First().Rule.RuleName.Should().Be("TestRule");
-        result.First().Rule.SuccessEvent.Should().Be("0.1");
-    }
-
-    [Fact]
-    public async Task ExecuteAllRulesAsync_WhenNoWorkflowFound_ThrowsArgumentException()
-    {
-        // Arrange
-        string workflowName = "NonExistentWorkflow";
-        dynamic[] inputs = new[]
-        {
-                new { ProductName = "Item1", Quantity = 2, UnitPrice = 50 },
-                new { ProductName = "Item2", Quantity = 1, UnitPrice = 100 }
+            var expectedReceipt = new Receipt
+            {
+                BasketId = basket.Id,
+                DiscountsApplied = 10m, // 10% of 100
+                TotalPrice = 90m // 100 - 10
             };
 
-        // Act
-        Func<Task> act = async () => await _discountRulesEngine.ExecuteAllRulesAsync(workflowName, inputs);
+            // Act
+            var result = await _discountService.ApplyDiscountsAsync(basket);
 
-        // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-           .WithMessage($"No configuration found for workflow: {workflowName}");
-    }
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Should().BeEquivalentTo(expectedReceipt);
+        }
 
-    [Fact]
-    public async Task ExecuteAllRulesAsync_WhenRulesFileNotFound_ThrowsFileNotFoundException()
-    {
-        // Arrange
-        string workflowName = "Discounts";
-        dynamic[] inputs = new[]
+        [Fact]
+        public async Task ApplyDiscountsAsync_NoApplicableRules_ReturnsSuccessWithNoDiscounts()
         {
-                new { ProductName = "Item1", Quantity = 2, UnitPrice = 50 },
-                new { ProductName = "Item2", Quantity = 1, UnitPrice = 100 }
+            // Arrange
+            var basket = new Basket
+            {
+                Items = new List<BasketItem>
+                {
+                    new BasketItem { ItemName = "Item2", Quantity = 2, UnitPrice = 200 }
+                }
             };
 
-        // Act
-        // Temporarily rename the file to simulate file not found.
-        File.Move(GetRulesFilePath(), GetRulesFilePath() + ".bak");
+            var ruleResults = new List<RuleResultTree>(); // No rules applied
 
-        Func<Task> act = async () => await _discountRulesEngine.ExecuteAllRulesAsync(workflowName, inputs);
+            _mockRulesEngine
+                .Setup(r => r.ExecuteAllRulesAsync("Discounts", It.IsAny<BasketInput[]>()))
+                .ReturnsAsync(ruleResults);
 
-        // Assert
-        await act.Should().ThrowAsync<FileNotFoundException>()
-            .WithMessage("Rules file not found");
+            var expectedReceipt = new Receipt
+            {
+                BasketId = basket.Id,
+                DiscountsApplied = 0m,
+                TotalPrice = 400m // 200 * 2
+            };
 
-        // Clean up by renaming the file back.
-        File.Move(GetRulesFilePath() + ".bak", GetRulesFilePath());
-    }
+            // Act
+            var result = await _discountService.ApplyDiscountsAsync(basket);
 
-    private string GetRulesFilePath()
-    {
-        // Adjust this path according to your test setup
-        return Path.Combine(AppContext.BaseDirectory, "rules.json");
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            result.Value.Should().BeEquivalentTo(expectedReceipt);
+        }
+
+        [Fact]
+        public async Task ApplyDiscountsAsync_RulesEngineFailure_ReturnsFailure()
+        {
+            // Arrange
+            var basket = new Basket
+            {
+                Items = new List<BasketItem>
+                {
+                    new BasketItem { ItemName = "Item3", Quantity = 1, UnitPrice = 150 }
+                }
+            };
+
+            _mockRulesEngine
+                .Setup(r => r.ExecuteAllRulesAsync("Discounts", It.IsAny<BasketInput[]>()))
+                .ThrowsAsync(new Exception("Rules engine failure"));
+
+            // Act
+            var result = await _discountService.ApplyDiscountsAsync(basket);
+
+            // Assert
+            result.IsSuccess.Should().BeFalse();
+            result.Error.Code.Should().BeEquivalentTo(ErrorCode.GenericError);
+            result.Error.Message.Should().BeEquivalentTo(ErrorMessages.InvalidRequest);
+        }
+
+        [Fact]
+        public async Task ApplyBasketDiscountAsync_ValidBasket_ReturnsSuccessWithCorrectBasket()
+        {
+            // Arrange
+            var basket = new Basket
+            {
+                Items = new List<BasketItem>
+                {
+                    new BasketItem { ItemName = "Soup", Quantity = 3, UnitPrice = 1.0m },
+                    new BasketItem { ItemName = "Bread", Quantity = 1, UnitPrice = 0.8m }
+                }
+            };
+
+            var ruleResults = new List<RuleResultTree>
+            {
+                new RuleResultTree
+                {
+                    IsSuccess = true,
+                    Rule = new RulesEngine.Models.Rule
+                    {
+                        RuleName = "MultiBuySoupBread",
+                        SuccessEvent = "0.80"
+                    }
+                }
+            };
+
+            _mockRulesEngine
+                .Setup(r => r.ExecuteAllRulesAsync("Discounts", It.IsAny<BasketItemInput[]>()))
+                .ReturnsAsync(ruleResults);
+
+            // Act
+            var result = await _discountService.ApplyBasketDiscountAsync(basket);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            var breadItems = basket.Items.Where(i => i.ItemName == "Bread").ToList();
+            breadItems.Count.Should().Be(2);
+            breadItems.First().DiscountAppliedName.Should().Be("MultiBuySoupBread");
+            breadItems.First().DiscountAppliedValue.Should().Be(0.80m);
+        }
+
+        [Fact]
+        public async Task ApplyBasketDiscountAsync_RulesEngineFailure_ReturnsFailure()
+        {
+            // Arrange
+            var basket = new Basket
+            {
+                Items = new List<BasketItem>
+                {
+                    new BasketItem { ItemName = "Apples", Quantity = 1, UnitPrice = 1.0m }
+                }
+            };
+
+            _mockRulesEngine
+                .Setup(r => r.ExecuteAllRulesAsync("Discounts", It.IsAny<BasketInput[]>()))
+                .ThrowsAsync(new Exception("Rules engine failure"));
+
+            // Act
+            var result = await _discountService.ApplyBasketDiscountAsync(basket);
+
+            // Assert
+            result.IsSuccess.Should().BeFalse();
+            result.Error.Code.Should().BeEquivalentTo(ErrorCode.GenericError);
+            result.Error.Message.Should().BeEquivalentTo(ErrorMessages.InvalidRequest);
+        }
     }
 }

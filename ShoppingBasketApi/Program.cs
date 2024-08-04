@@ -24,6 +24,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<DatabaseContext>(options =>
     options.UseInMemoryDatabase("InMemoryDb"));
 
+var basePath = AppContext.BaseDirectory; // Get the base directory of the application
+var absolutePath = Path.Combine(basePath, "4-Infrastructure", "rules.json");
+
+builder.Services.AddSingleton<IRulesFileProvider>(new RulesFileProvider(absolutePath));
 builder.Services.AddScoped<IBasketService, BasketService>();
 builder.Services.AddScoped<IReceiptService, ReceiptService>();
 builder.Services.AddScoped<IDiscountService, DiscountService>();
