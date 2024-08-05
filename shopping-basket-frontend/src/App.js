@@ -4,7 +4,7 @@ import './App.css';
 function App() {
   const [basket, setBasket] = useState({});
   const [total, setTotal] = useState(null);
-  const [discounts, setDiscounts] = useState([]);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   const items = [
     { name: 'Soup', price: 0.65 },
@@ -42,8 +42,6 @@ function App() {
         return response.json();
       })
       .then(data => {
-        console.log('Updated data:', data);
-
         const basketState = data.reduce((acc, item) => {
           acc[item.itemName] = {
             ...item,
@@ -55,8 +53,6 @@ function App() {
           return acc;
         }, {});
 
-        console.log('Basket State:', basketState);
-
         setBasket(basketState);
 
         const totalPrice = data.reduce((sum, item) => {
@@ -64,9 +60,8 @@ function App() {
           return sum + discountedPrice;
         }, 0);
 
-        console.log('Total Price:', totalPrice);
-
         setTotal(totalPrice.toFixed(2));
+        setDiscountPercentage(data.discountsApplied * 100);
       })
       .catch(error => {
         console.error('Error updating basket:', error);
@@ -80,7 +75,8 @@ function App() {
         [item.name]: {
           quantity: (prevBasket[item.name]?.quantity || 0) + 1,
           unitPrice: item.price,
-          discountApplied: prevBasket[item.name]?.discountApplied || 0
+          discountApplied: prevBasket[item.name]?.discountApplied || 0,
+          discountAppliedName: prevBasket[item.name]?.discountAppliedName || ""
         }
       };
       updateBasket(updatedBasket);
@@ -123,7 +119,7 @@ function App() {
         discountAppliedName: item.discountAppliedName || ""
       };
     });
-
+  
     fetch('/api/basket/calculate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -131,12 +127,20 @@ function App() {
     })
       .then(response => response.json())
       .then(data => {
-        const receipt = data.Receipt;
+        const receipt = data.receipt;
         setTotal(receipt.totalPrice.toFixed(2));
-        setDiscounts(receipt.discountsApplied || []);
+  
+        // Calculate the correct discount percentage
+        if (receipt.discountsApplied) {
+          const correctDiscountPercentage = receipt.discountsApplied * 100;
+          setDiscountPercentage(correctDiscountPercentage);
+        } else {
+          setDiscountPercentage(0);
+        }
       })
       .catch(error => console.error('Error calculating total:', error));
   };
+  
 
   return (
     <div className="App">
@@ -169,7 +173,9 @@ function App() {
                     value={basket[key].quantity}
                     onChange={(e) => updateQuantity(key, e.target.value)}
                   />
-                  <span>Price: €{(basket[key].unitPrice * (1 - (basket[key].discountApplied || 0))).toFixed(2)}</span>
+                  <span>
+                    Price: €{(basket[key].unitPrice * (1 - (basket[key].discountApplied || 0))).toFixed(2)}
+                  </span>
                   <button onClick={() => removeFromBasket(key)}>Remove</button>
                   {basket[key].discountApplied > 0 && (
                     <span className="discount">
@@ -185,14 +191,9 @@ function App() {
             {total !== null && (
               <>
                 <h3>Total: €{total}</h3>
-                {discounts.length > 0 && (
-                  <div className="discounts">
-                    <h4>Applied Discounts:</h4>
-                    <ul>
-                      {discounts.map((discount, index) => (
-                        <li key={index}>{discount}</li>
-                      ))}
-                    </ul>
+                {discountPercentage > 0 && (
+                  <div className="discount-info">
+                    <h4>Discounts Applied: {discountPercentage}% off</h4>
                   </div>
                 )}
               </>
