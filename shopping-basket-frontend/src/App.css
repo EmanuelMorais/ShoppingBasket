@@ -1,5 +1,7 @@
 .App {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   font-family: Arial, sans-serif;
 }
 
@@ -13,6 +15,7 @@
   display: flex;
   justify-content: center;
   padding: 20px;
+  flex: 1; /* This makes the main area grow to fill available space */
 }
 
 .container {
@@ -114,20 +117,6 @@
   background-color: #218838;
 }
 
-.discounts {
-  margin-top: 20px;
-  text-align: left;
-}
-
-.App-footer {
-  background-color: #282c34;
-  color: white;
-  padding: 10px;
-  position: fixed;
-  width: 100%;
-  bottom: 0;
-}
-
 .discount {
   color: red;
   font-size: 0.8em;
@@ -138,4 +127,35 @@
 
 .discount-info {
   margin-top: 10px;
+}
+
+.receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.receipt-table th, .receipt-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
+.receipt-table th {
+  background-color: #f4f4f4;
+  text-align: left;
+}
+
+.receipt-table td {
+  text-align: right;
+}
+
+.receipt-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.App-footer {
+  background-color: #282c34;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  margin-top: auto; 
 }

@@ -1,5 +1,4 @@
-﻿using System;
-using Rule = ShoppingBasketApi.Domain.Entities.Rule;
+﻿using Rule = ShoppingBasketApi.Domain.Entities.Rule;
 using Workflow = ShoppingBasketApi.Domain.Entities.Workflow;
 namespace ShoppingBasketApi.Data.Repositories;
 

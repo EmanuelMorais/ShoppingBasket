@@ -10,9 +10,9 @@ public class BasketItem
 
     public decimal UnitPrice { get; set; }
 
-    public decimal Price => DiscountAppliedValue > 0m ? (this.UnitPrice * this.Quantity) * DiscountAppliedValue : this.UnitPrice * this.Quantity;
+    public decimal FullPrice => UnitPrice * Quantity;
 
-    public decimal FullPrice => this.UnitPrice * this.Quantity;
+    public decimal Price => FullPrice * (1 - DiscountAppliedValue);
 
     public decimal DiscountAppliedValue { get; set; }
 
@@ -28,19 +28,6 @@ public class BasketItem
             UnitPrice = this.UnitPrice,
             DiscountAppliedValue = this.DiscountAppliedValue,
             DiscountAppliedName = this.DiscountAppliedName
-        };
-    }
-
-    public BasketItemInput[] GetInputs()
-    {
-        return new BasketItemInput[]
-        {
-            new BasketItemInput
-            {
-                ItemName = this.ItemName,
-                Quantity = this.Quantity,
-                Price = this.UnitPrice
-            }
         };
     }
 
@@ -62,7 +49,10 @@ public class BasketItem
 public class BasketItemInput
 {
     public string ItemName { get; set; }
+
     public int Quantity { get; set; }
+
     public decimal Price { get; set; }
+
     public DateTime CurrentDate { get; set; }
 }

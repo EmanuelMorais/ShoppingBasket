@@ -4,13 +4,14 @@ import './App.css';
 function App() {
   const [basket, setBasket] = useState({});
   const [total, setTotal] = useState(null);
-  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [receiptItems, setReceiptItems] = useState([]);
 
   const items = [
     { name: 'Soup', price: 0.65 },
     { name: 'Bread', price: 0.80 },
-    { name: 'Milk', price: 1.3 },
-    { name: 'Apples', price: 1.0 }
+    { name: 'Milk', price: 1.30 },
+    { name: 'Apples', price: 1.00 }
   ];
 
   const updateBasket = (updatedBasket, forceRemove = false) => {
@@ -54,14 +55,6 @@ function App() {
         }, {});
 
         setBasket(basketState);
-
-        const totalPrice = data.reduce((sum, item) => {
-          const discountedPrice = (item.unitPrice * item.quantity) * (1 - item.discountAppliedValue);
-          return sum + discountedPrice;
-        }, 0);
-
-        setTotal(totalPrice.toFixed(2));
-        setDiscountPercentage(data.discountsApplied * 100);
       })
       .catch(error => {
         console.error('Error updating basket:', error);
@@ -119,7 +112,7 @@ function App() {
         discountAppliedName: item.discountAppliedName || ""
       };
     });
-  
+
     fetch('/api/basket/calculate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -129,18 +122,13 @@ function App() {
       .then(data => {
         const receipt = data.receipt;
         setTotal(receipt.totalPrice.toFixed(2));
-  
-        // Calculate the correct discount percentage
-        if (receipt.discountsApplied) {
-          const correctDiscountPercentage = receipt.discountsApplied * 100;
-          setDiscountPercentage(correctDiscountPercentage);
-        } else {
-          setDiscountPercentage(0);
-        }
+        setReceiptItems(receipt.items);
+
+        // Extract and set the correct discount amount
+        setDiscount(receipt.discountsApplied.toFixed(2));
       })
       .catch(error => console.error('Error calculating total:', error));
   };
-  
 
   return (
     <div className="App">
@@ -174,7 +162,7 @@ function App() {
                     onChange={(e) => updateQuantity(key, e.target.value)}
                   />
                   <span>
-                    Price: €{(basket[key].unitPrice * (1 - (basket[key].discountApplied || 0))).toFixed(2)}
+                    Price: €{(basket[key].unitPrice * basket[key].quantity - basket[key].discountApplied).toFixed(2)}
                   </span>
                   <button onClick={() => removeFromBasket(key)}>Remove</button>
                   {basket[key].discountApplied > 0 && (
@@ -191,10 +179,38 @@ function App() {
             {total !== null && (
               <>
                 <h3>Total: €{total}</h3>
-                {discountPercentage > 0 && (
+                {discount > 0 && (
                   <div className="discount-info">
-                    <h4>Discounts Applied: {discountPercentage}% off</h4>
+                    <h4>Discounts Applied: €{discount}</h4>
                   </div>
+                )}
+                {receiptItems.length > 0 && (
+                  <table className="receipt-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Unit Price</th>
+                        <th>Quantity</th>
+                        <th>Discount</th>
+                        <th>Final Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {receiptItems.map(item => (
+                        <tr key={item.itemName}>
+                          <td>{item.itemName}</td>
+                          <td>€{item.unitPrice.toFixed(2)}</td>
+                          <td>{item.quantity}</td>
+                          <td>
+                            {item.discountApplied > 0
+                              ? `€${(item.unitPrice * item.quantity * item.discountApplied).toFixed(2)}`
+                              : '€0.00'}
+                          </td>
+                          <td>€{(item.unitPrice * item.quantity * (1 - item.discountApplied)).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </>
             )}

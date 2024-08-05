@@ -8,7 +8,7 @@ namespace ShoppingBasketApi.Infrastructure
     public class DiscountRulesEngine : IRulesEngine
     {
         private readonly IRulesFileProvider rulesFileProvider;
-        private readonly List<RulesEngine.Models.Workflow> workflows;
+        private readonly IEnumerable<RulesEngine.Models.Workflow> workflows;
 
         public DiscountRulesEngine(IRulesFileProvider rulesFileProvider)
         {

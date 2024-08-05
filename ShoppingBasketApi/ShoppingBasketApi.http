@@ -1,6 +1,43 @@
-@ShoppingBasketApi_HostAddress = http://localhost:5104
+### Test Basket Update
 
-GET {{ShoppingBasketApi_HostAddress}}/weatherforecast/
-Accept: application/json
+POST http://localhost:5000/api/basket/update?forceRemove=false
+Content-Type: application/json
 
-###
+[
+  {
+    "itemName": "Soup",
+    "quantity": 2,
+    "unitPrice": 0.65,
+    "discountAppliedValue": 0.1,
+    "discountAppliedName": "10% off"
+  },
+  {
+    "itemName": "Bread",
+    "quantity": 1,
+    "unitPrice": 0.80,
+    "discountAppliedValue": 0.05,
+    "discountAppliedName": "5% off"
+  }
+]
+
+### Test Calculate Total
+
+POST http://localhost:5000/api/basket/calculate
+Content-Type: application/json
+
+[
+  {
+    "itemName": "Soup",
+    "quantity": 2,
+    "unitPrice": 0.65,
+    "discountAppliedValue": 0.1,
+    "discountAppliedName": "10% off"
+  },
+  {
+    "itemName": "Bread",
+    "quantity": 1,
+    "unitPrice": 0.80,
+    "discountAppliedValue": 0.05,
+    "discountAppliedName": "5% off"
+  }
+]

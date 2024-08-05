@@ -46,7 +46,12 @@ public class BasketService : IBasketService
             var result = await this.discountService.ApplyBasketDiscountAsync(basket);
             basket = result.Value;
         }
-
+        else
+        {
+            basket.Items = basket.Items
+                .Where(item => !basketItems.Any(bi => bi.ItemName == item.ItemName && bi.Quantity == 0))
+                .ToList();
+        }
         var updatedItems = basket.Items.Select(item => item.ToDto()).ToList();
         return Result<IEnumerable<BasketItemDto>>.Success(updatedItems);
     }

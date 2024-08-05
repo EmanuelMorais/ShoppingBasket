@@ -42,7 +42,8 @@ public class BasketServiceTests
         {
             BasketId = basket.Id,
             DiscountsApplied = receipt.DiscountsApplied,
-            TotalPrice = receipt.TotalPrice
+            TotalPrice = receipt.TotalPrice,
+            Items = new List<ReceiptItemDto>()
         };
 
         _mockDiscountService

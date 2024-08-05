@@ -12,17 +12,7 @@ public class Basket
 
     public decimal Discounts => Items.Sum(item => (item.UnitPrice * item.Quantity) * item.DiscountAppliedValue);
 
-    public decimal Total => Items.Sum(item => (item.UnitPrice * item.Quantity) * (1 - item.DiscountAppliedValue));
-
-    public BasketInput[] GetInputs()
-    {
-        return this.Items.Select(item => new BasketInput
-        {
-            ItemName = item.ItemName,
-            Quantity = item.Quantity,
-            Price = item.UnitPrice
-        }).ToArray();
-    }
+    public decimal Total => Items.Sum(item => item.Price);
 
     public BasketInput[] GetInputs(DateTime currentDate)
     {
@@ -47,7 +37,10 @@ public class Basket
 public class BasketInput
 {
     public string ItemName { get; set; }
+
     public int Quantity { get; set; }
+
     public decimal Price { get; set; }
+
     public DateTimeOffset CurrentDate { get; set; }
 }

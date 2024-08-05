@@ -6,5 +6,4 @@ namespace ShoppingBasketApi.Domain.Abstractions;
 public interface IDiscountService
 {
     Task<Result<Basket>> ApplyBasketDiscountAsync(Basket basket);
-    Task<Result<Receipt>> ApplyDiscountsAsync(Basket basket);
 }

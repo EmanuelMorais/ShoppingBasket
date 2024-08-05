@@ -1,8 +1,4 @@
-﻿using System.Net.Http.Json;
-using System.Text.Json;
-using Microsoft.Extensions.Options;
-using RulesEngine.Models;
-using ShoppingBasketApi.Domain.Abstractions;
+﻿using ShoppingBasketApi.Domain.Abstractions;
 using ShoppingBasketApi.Domain.Entities;
 using ShoppingBasketApi.Infrastructure.Entities;
 using ShoppingBasketApi.Infrastructure.Helpers;
@@ -13,43 +9,15 @@ public class DiscountService : IDiscountService
 {
     private readonly IRulesEngine rulesEngine;
     private const string Discounts = "Discounts";
+    private const string MultiBuySoupBread = "MultiBuySoupBread";
+    private const string Apples10PercentDiscount = "Apples10PercentDiscount";
+    private const string Soup = "Soup";
+    private const string Bread = "Bread";
+    private const string Apples = "Apples";
 
     public DiscountService(IRulesEngine rulesEngine)
     {
         this.rulesEngine = rulesEngine;
-    }
-
-    public async Task<Result<Receipt>> ApplyDiscountsAsync(Basket basket)
-    {
-        try
-        {
-            var inputs = basket.GetInputs();
-            var ruleResults = await this.rulesEngine.ExecuteAllRulesAsync(Discounts, inputs);
-            var totalPriceBeforeDiscounts = basket.Items.Sum(item => item.Price);
-            decimal totalDiscountPercentage = 0m;
-
-            if (ruleResults != null && ruleResults.Any())
-            {
-                totalDiscountPercentage = ruleResults
-                    .Where(result => result.IsSuccess)
-                    .Sum(result => GetDiscountFromActionResult(result)) * 100;
-            }
-
-            var totalDiscountAmount = totalDiscountPercentage > 0m ? totalPriceBeforeDiscounts * (totalDiscountPercentage / 100) : 0;
-
-            var receipt = new Receipt
-            {
-                BasketId = basket.Id,
-                DiscountsApplied = totalDiscountAmount,
-                TotalPrice = totalPriceBeforeDiscounts - totalDiscountAmount
-            };
-
-            return Result<Receipt>.Success(receipt);
-        }
-        catch (Exception)
-        {
-            return Result<Receipt>.Failure(ErrorCode.GenericError, ErrorMessages.InvalidRequest);
-        }
     }
 
     public async Task<Result<Basket>> ApplyBasketDiscountAsync(Basket basket)
@@ -62,7 +30,12 @@ public class DiscountService : IDiscountService
             foreach (var basketItem in basketItems)
             {
                 var inputs = basketItem.GetInputs(currentDate);
-                var ruleResults = await this.rulesEngine.ExecuteAllRulesAsync("Discounts", inputs);
+                var ruleResults = await this.rulesEngine.ExecuteAllRulesAsync(Discounts, inputs);
+
+                if (ruleResults is null)
+                {
+                    return Result<Basket>.Success(basket);
+                }
 
                 foreach (var result in ruleResults)
                 {
@@ -72,11 +45,11 @@ public class DiscountService : IDiscountService
 
                         switch (result.Rule.RuleName)
                         {
-                            case "MultiBuySoupBread":
+                            case MultiBuySoupBread:
                                 ApplyMultiBuySoupBreadDiscount(basket, discountValue);
                                 break;
 
-                            case "Apples10PercentDiscount":
+                            case Apples10PercentDiscount:
                                 ApplyApplesDiscount(basket, discountValue);
                                 break;
                         }
@@ -86,23 +59,21 @@ public class DiscountService : IDiscountService
 
             return Result<Basket>.Success(basket);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return Result<Basket>.Failure(ErrorCode.GenericError, ErrorMessages.InvalidRequest);
         }
     }
 
-    private void ApplyMultiBuySoupBreadDiscount(Basket basket, decimal discountValue)
+    private static void ApplyMultiBuySoupBreadDiscount(Basket basket, decimal discountValue)
     {
-        //var itemLookup = basket.Items.ToDictionary(i => i.ItemName, i => i);
-
         var soupQuantity = basket.Items
-            .Where(i => i.ItemName == "Soup" && i.DiscountAppliedName != "MultiBuySoupBread")
+            .Where(i => i.ItemName == Soup && i.DiscountAppliedName != MultiBuySoupBread)
             .Sum(i => i.Quantity);
 
         var requiredBreads = soupQuantity / 2;
-        var breadItemWithDiscount = basket.Items.FirstOrDefault(i => i.ItemName == "Bread" && i.DiscountAppliedName == "MultiBuySoupBread");
-        var breadItemWithoutDiscount = basket.Items.FirstOrDefault(i => i.ItemName == "Bread");
+        var breadItemWithDiscount = basket.Items.FirstOrDefault(i => i.ItemName == Bread && i.DiscountAppliedName == MultiBuySoupBread);
+        var breadItemWithoutDiscount = basket.Items.FirstOrDefault(i => i.ItemName == Bread && string.IsNullOrEmpty(i.DiscountAppliedName));
         var currentBreads = breadItemWithDiscount?.Quantity ?? 0;
         var breadsToAdd = requiredBreads - currentBreads;
 
@@ -112,23 +83,26 @@ public class DiscountService : IDiscountService
             {
                 if (breadItemWithDiscount != null)
                 {
-                    breadItemWithDiscount.Quantity++;
+                    breadItemWithDiscount.Quantity += breadsToAdd;
                 }
                 else
                 {
                     if (breadItemWithoutDiscount != null)
                     {
-                        breadItemWithoutDiscount.DiscountAppliedName = "MultiBuySoupBread";
+                        breadItemWithoutDiscount.DiscountAppliedName = MultiBuySoupBread;
                         breadItemWithoutDiscount.DiscountAppliedValue = discountValue;
                     }
-                    basket.Items.Add(new BasketItem
+                    else
                     {
-                        ItemName = "Bread",
-                        UnitPrice = 0.80m,
-                        Quantity = 1,
-                        DiscountAppliedValue = discountValue,
-                        DiscountAppliedName = "MultiBuySoupBread"
-                    });
+                        basket.Items.Add(new BasketItem
+                        {
+                            ItemName = Bread,
+                            UnitPrice = 0.80m,
+                            Quantity = 1,
+                            DiscountAppliedValue = discountValue,
+                            DiscountAppliedName = MultiBuySoupBread
+                        });
+                    }
                 }
             }
         }
@@ -147,28 +121,13 @@ public class DiscountService : IDiscountService
         }
     }
 
-    private void ApplyApplesDiscount(Basket basket, decimal discountValue)
+    private static void ApplyApplesDiscount(Basket basket, decimal discountValue)
     {
-        foreach (var item in basket.Items.Where(i => i.ItemName == "Apples"))
+        foreach (var item in basket.Items.Where(i => i.ItemName == Apples))
         {
             item.DiscountAppliedValue = discountValue;
-            item.DiscountAppliedName = "Apples10PercentDiscount";
+            item.DiscountAppliedName = Apples10PercentDiscount;
         }
-    }
-
-
-    private static decimal GetDiscountFromActionResult(RuleResultTree ruleResult)
-    {
-        if (ruleResult.IsSuccess && ruleResult.Rule != null)
-        {
-            var successEvent = ruleResult.Rule.SuccessEvent;
-            if (decimal.TryParse(successEvent, out var discount))
-            {
-                return discount;
-            }
-        }
-
-        return 0m;
     }
 }
 
