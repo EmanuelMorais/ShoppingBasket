@@ -9,6 +9,7 @@ namespace UnitTests
     using ShoppingBasketApi.Application.Dtos;
     using ShoppingBasketApi.Controllers;
     using ShoppingBasketApi.Domain.Abstractions;
+    using ShoppingBasketApi.Domain.Entities;
     using ShoppingBasketApi.Infrastructure.Helpers;
     using Xunit;
 
@@ -75,9 +76,11 @@ namespace UnitTests
                 new BasketItemDto { ItemName = "Item1", Quantity = 1, UnitPrice = 100, DiscountAppliedValue = 10 }
             };
 
+            var basket = new Basket { Items = basketItems.Select(item => item.ToDomain()).ToList() };
+
             _mockBasketService
                 .Setup(service => service.UpdateBasketWithDiscountsAsync(basketItems, false))
-                .ReturnsAsync(Result<IEnumerable<BasketItemDto>>.Success(basketItems));
+                .ReturnsAsync(Result<BasketDto>.Success(basket.ToDto()));
 
             // Act
             var result = await _controller.UpdateBasket(basketItems);
@@ -94,10 +97,11 @@ namespace UnitTests
             // Arrange
             var basketItems = new List<BasketItemDto>();
 
-            // Configure the mock to return a failure Result
+            var basket = new Basket { Items = basketItems.Select(item => item.ToDomain()).ToList() };
+
             _mockBasketService
                 .Setup(service => service.UpdateBasketWithDiscountsAsync(basketItems, false))
-                .ReturnsAsync(Result<IEnumerable<BasketItemDto>>.Failure("InvalidData", "Invalid data"));
+                .ReturnsAsync(Result<BasketDto>.Success(basket.ToDto()));
 
             // Act
             var result = await _controller.UpdateBasket(basketItems);

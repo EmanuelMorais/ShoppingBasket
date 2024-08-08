@@ -16,10 +16,10 @@ public class Receipt
     {
         return new ReceiptDto
         {
-            BasketId = BasketId,
-            DiscountsApplied = DiscountsApplied,
-            TotalPrice = TotalPrice,
-            Items = Items.Select(i => i.ToDto()).ToList()
+            BasketId = this.BasketId,
+            DiscountsApplied = this.DiscountsApplied,
+            TotalPrice = this.TotalPrice,
+            Items = this.Items.Select(i => i.ToDto()).ToList()
         };
     }
 }
@@ -41,11 +41,11 @@ public class ReceiptItem
     {
         return new ReceiptItemDto
         {
-            ItemName = ItemName,
-            UnitPrice = UnitPrice,
-            Quantity = Quantity,
-            DiscountApplied = DiscountApplied,
-            FinalPrice = FinalPrice
+            ItemName = this.ItemName,
+            UnitPrice = this.UnitPrice,
+            Quantity = this.Quantity,
+            DiscountApplied = this.DiscountApplied,
+            FinalPrice = this.FinalPrice
         };
     }
 }

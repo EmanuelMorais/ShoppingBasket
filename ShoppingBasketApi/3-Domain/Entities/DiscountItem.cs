@@ -2,7 +2,7 @@
 
 namespace ShoppingBasketApi.Domain.Entities;
 
-public class BasketItem : Item
+public class DiscountItem : Item
 {
     public int Quantity { get; set; }
 
@@ -26,9 +26,9 @@ public class BasketItem : Item
 
     public bool ForceRemove { get; set; }
 
-    public BasketItemDto ToDto()
+    public DiscountItemDto ToDto()
     {
-        return new BasketItemDto
+        return new DiscountItemDto
         {
             ItemName = this.ItemName,
             Quantity = this.Quantity,
@@ -40,29 +40,5 @@ public class BasketItem : Item
             ForceRemove = this.ForceRemove
         };
     }
-
-    public BasketItemInput[] GetInputs(DateTime currentDate)
-    {
-        return new BasketItemInput[]
-        {
-            new BasketItemInput
-            {
-                ItemName = this.ItemName,
-                Quantity = this.Quantity,
-                Price = this.UnitPrice,
-                CurrentDate = currentDate
-            }
-        };
-    }
 }
 
-public class BasketItemInput
-{
-    public string ItemName { get; set; }
-
-    public int Quantity { get; set; }
-
-    public decimal Price { get; set; }
-
-    public DateTime CurrentDate { get; set; }
-}

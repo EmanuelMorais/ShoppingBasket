@@ -2,21 +2,21 @@
 
 namespace ShoppingBasketApi.Application.Dtos;
 
-public record BasketItemDto
+public record BasketItemDto : ItemDto
 {
-    public required string ItemName { get; set; }
-
     public int Quantity { get; set; }
 
     public decimal UnitPrice { get; set; }
 
-    public decimal Price => DiscountAppliedValue > 0m ? (this.UnitPrice * this.Quantity) * DiscountAppliedValue : this.UnitPrice * this.Quantity;
+    public decimal Price { get; set; }
 
-    public decimal FullPrice => this.UnitPrice * this.Quantity;
+    public decimal FullPrice { get; set; }
 
     public decimal DiscountAppliedValue { get; set; }
 
     public string DiscountAppliedName { get; set; }
+
+    public bool ForceRemove { get; set; }
 
     public BasketItem ToDomain()
     {
@@ -26,7 +26,8 @@ public record BasketItemDto
             Quantity = this.Quantity,
             UnitPrice = this.UnitPrice,
             DiscountAppliedValue = this.DiscountAppliedValue,
-            DiscountAppliedName = this.DiscountAppliedName
+            DiscountAppliedName = this.DiscountAppliedName,
+            ForceRemove = this.ForceRemove
         };
     }
 }

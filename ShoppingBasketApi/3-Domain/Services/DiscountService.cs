@@ -12,7 +12,8 @@ public class DiscountService : IDiscountService
     private const string MultiBuySoupBread = "MultiBuySoupBread";
     private const string Apples10PercentDiscount = "Apples10PercentDiscount";
     private const string Soup = "Soup";
-    private const string Bread = "Bread";
+    private const string BreadOffer = "Bread(offer)";
+
     private const string Apples = "Apples";
 
     public DiscountService(IRulesEngine rulesEngine)
@@ -26,8 +27,18 @@ public class DiscountService : IDiscountService
         {
             var currentDate = DateTime.UtcNow;
             var basketItems = basket.Items.ToList();
+            var groupedItems = basketItems
+                .GroupBy(x => x.ItemName)
+                .Select(g => new BasketItem
+                {
+                    ItemName = g.Key,
+                    Quantity = g.Sum(x => x.Quantity),
+                    UnitPrice = g.First().UnitPrice,
+                    DiscountAppliedValue = 0
+                })
+                .ToList();
 
-            foreach (var basketItem in basketItems)
+            foreach (var basketItem in groupedItems)
             {
                 var inputs = basketItem.GetInputs(currentDate);
                 var ruleResults = await this.rulesEngine.ExecuteAllRulesAsync(Discounts, inputs);
@@ -67,15 +78,34 @@ public class DiscountService : IDiscountService
 
     private static void ApplyMultiBuySoupBreadDiscount(Basket basket, decimal discountValue)
     {
-        var soupQuantity = basket.Items
-            .Where(i => i.ItemName == Soup && i.DiscountAppliedName != MultiBuySoupBread)
+        var soups = basket.Items
+            .Where(i => i.ItemName == Soup);
+
+        var soupsWithDiscount = soups
+            .Where(i => i.DiscountAppliedName == MultiBuySoupBread)
             .Sum(i => i.Quantity);
 
+        var soupQuantity = soups
+            .Where(i => i.DiscountAppliedName != MultiBuySoupBread)
+            .Sum(i => i.Quantity);
+
+        if (soupQuantity == soupsWithDiscount)
+        {
+            return;
+        }
+
         var requiredBreads = soupQuantity / 2;
-        var breadItemWithDiscount = basket.Items.FirstOrDefault(i => i.ItemName == Bread && i.DiscountAppliedName == MultiBuySoupBread);
-        var breadItemWithoutDiscount = basket.Items.FirstOrDefault(i => i.ItemName == Bread && string.IsNullOrEmpty(i.DiscountAppliedName));
+
+        var breadItemWithDiscount = basket
+            .DiscountItems
+            .FirstOrDefault(i =>
+                i.ItemName == BreadOffer &&
+                i.DiscountAppliedName == MultiBuySoupBread &&
+                i.Quantity > 0 &&
+                !i.ForceRemove);
+
         var currentBreads = breadItemWithDiscount?.Quantity ?? 0;
-        var breadsToAdd = requiredBreads - currentBreads;
+        var breadsToAdd = GetBreadsToAdd(requiredBreads, currentBreads, basket.DiscountItems);
 
         if (breadsToAdd > 0)
         {
@@ -87,23 +117,23 @@ public class DiscountService : IDiscountService
                 }
                 else
                 {
-                    if (breadItemWithoutDiscount != null)
+
+                    basket.DiscountItems.Add(new DiscountItem
                     {
-                        breadItemWithoutDiscount.DiscountAppliedName = MultiBuySoupBread;
-                        breadItemWithoutDiscount.DiscountAppliedValue = discountValue;
-                    }
-                    else
-                    {
-                        basket.Items.Add(new BasketItem
-                        {
-                            ItemName = Bread,
-                            UnitPrice = 0.80m,
-                            Quantity = 1,
-                            DiscountAppliedValue = discountValue,
-                            DiscountAppliedName = MultiBuySoupBread
-                        });
-                    }
+                        ItemName = BreadOffer,
+                        UnitPrice = 0.80m,
+                        Quantity = 1,
+                        DiscountAppliedValue = discountValue,
+                        DiscountAppliedName = MultiBuySoupBread
+                    });
                 }
+            }
+
+            var freshSoups = soups.Where(i => i.DiscountAppliedName != MultiBuySoupBread);
+
+            foreach (var soup in freshSoups)
+            {
+                soup.DiscountAppliedName = MultiBuySoupBread;
             }
         }
         else if (breadsToAdd < 0)
@@ -115,15 +145,31 @@ public class DiscountService : IDiscountService
                 breadItemWithDiscount.Quantity -= breadsToRemove;
                 if (breadItemWithDiscount.Quantity <= 0)
                 {
-                    basket.Items.Remove(breadItemWithDiscount);
+                    basket.DiscountItems.Remove(breadItemWithDiscount);
                 }
             }
         }
     }
 
+    private static int GetBreadsToAdd(int requiredBreads, int currentBreads, IEnumerable<DiscountItem> items)
+    {
+        var breadsToAdd = requiredBreads - currentBreads;
+        var breadsToRemove = items
+            .Where(i =>
+                i.ItemName == BreadOffer &&
+                i.DiscountAppliedName == MultiBuySoupBread &&
+                i.Quantity == 0 &&
+                i.ForceRemove)
+            .Count();
+
+        return breadsToAdd - breadsToRemove;
+    }
+
     private static void ApplyApplesDiscount(Basket basket, decimal discountValue)
     {
-        foreach (var item in basket.Items.Where(i => i.ItemName == Apples))
+        var apples = basket.Items.Where(i => i.ItemName == Apples);
+
+        foreach (var item in apples)
         {
             item.DiscountAppliedValue = discountValue;
             item.DiscountAppliedName = Apples10PercentDiscount;

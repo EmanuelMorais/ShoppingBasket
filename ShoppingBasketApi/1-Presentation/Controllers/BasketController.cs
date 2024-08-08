@@ -33,7 +33,7 @@ public class BasketController : ControllerBase
         var result = await this.basketService.UpdateBasketWithDiscountsAsync(basketItems, forceRemove);
 
         return result.Match<IActionResult>(
-            items => Ok(items),
+            basketDto => Ok(basketDto),
             error => BadRequest(new { error.Code, error.Message })
         );
     }

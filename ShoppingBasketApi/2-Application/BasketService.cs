@@ -37,7 +37,7 @@ public class BasketService : IBasketService
         return Result<ReceiptDto>.Success(receiptResult.Value.ToDto());
     }
 
-    public async Task<Result<IEnumerable<BasketItemDto>>> UpdateBasketWithDiscountsAsync(IEnumerable<BasketItemDto> basketItems, bool forceRemove = false)
+    public async Task<Result<BasketDto>> UpdateBasketWithDiscountsAsync(IEnumerable<BasketItemDto> basketItems, bool forceRemove = false)
     {
         var basket = new Basket { Items = basketItems.Select(item => item.ToDomain()).ToList() };
 
@@ -48,11 +48,17 @@ public class BasketService : IBasketService
         }
         else
         {
-            basket.Items = basket.Items
-                .Where(item => !basketItems.Any(bi => bi.ItemName == item.ItemName && bi.Quantity == 0))
-                .ToList();
+            foreach (var item in basket.Items)
+            {
+                if (item.Quantity == 0 && !string.IsNullOrEmpty(item.DiscountAppliedName))
+                {
+                    item.ForceRemove = true;
+                    item.UnitPrice = 0;
+                    item.Quantity = 0;
+                }
+            }
         }
-        var updatedItems = basket.Items.Select(item => item.ToDto()).ToList();
-        return Result<IEnumerable<BasketItemDto>>.Success(updatedItems);
+
+        return Result<BasketDto>.Success(basket.ToDto());
     }
 }
