@@ -14,8 +14,7 @@ public class DiscountItem : Item
     {
         get
         {
-            decimal discountMultiplier = 1 - (DiscountAppliedValue / 100);
-
+            decimal discountMultiplier = 1 - DiscountAppliedValue;
             return Math.Round(FullPrice * discountMultiplier, 2, MidpointRounding.AwayFromZero);
         }
     }
