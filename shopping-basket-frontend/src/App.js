@@ -218,7 +218,7 @@ function App() {
         </div>
       </main>
       <footer className="App-footer">
-        <p>&copy; 2024 Kantar - Emanuel Morais</p>
+        <p>&copy; 2024 - Emanuel Morais</p>
       </footer>
     </div>
   );
